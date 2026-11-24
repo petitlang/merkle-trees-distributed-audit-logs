@@ -3,18 +3,15 @@
 `LogServer` manages the ledger and generates proofs. It reuses the existing
 `MerkleTree`; it does not implement the production Auditor or network bonus.
 
-## Run the example
+## Build and test
 
 ```powershell
 mvn test
 mvn package
-java -cp target/classes fr.isep.auditlog.LogServerDemo
 ```
 
-The example creates a temporary five-event ledger, appends e6, saves the
-six-event root, appends e7 and e8 as a batch, prints the eight-event root and
-both assignment proof examples, then reloads the ledger. Its temporary file
-is deleted on exit.
+Cucumber and JUnit load temporary ledgers, exercise single and batch appends,
+check both assignment proof examples, and verify that records survive reopening.
 
 ## API
 
@@ -138,8 +135,8 @@ incremental append algorithm is a separate optimization.
    proofs. All 143 tests passed: 55 Cucumber examples (16 original + 39 new),
    35 MerkleTree JUnit cases, and 53 LogServer JUnit cases.
 4. BLUE: extracted batch validation and ledger writing, documented the proof
-   contract and complexity, and added the runnable console example. The final
-   clean verification and console result are recorded in `development.md`.
+   contract and complexity. The clean verification results are recorded in
+   `development.md`.
 
 Run only the new acceptance scenarios:
 

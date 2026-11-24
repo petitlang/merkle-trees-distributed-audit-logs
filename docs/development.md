@@ -83,10 +83,6 @@ on PATH):
 
 - `mvn clean verify` passed: 55 Cucumber examples, 53 LogServer JUnit cases,
   and 35 existing MerkleTree JUnit cases; 143 total, no failures or skips.
-- `java -cp target/classes fr.isep.auditlog.LogServerDemo` passed. It loaded
-  five records, appended e6, saved the six-record root, appended e7/e8 as a
-  batch, printed both exact assignment proof lists, and reopened eight records
-  with the same root.
 - The six-record root was
   `0ec8a9f5275054d630180595e5d356faf48ea547c96e4b9c9ebe89303ce326b8`;
   the eight-record root was

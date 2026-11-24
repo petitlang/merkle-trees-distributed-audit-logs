@@ -128,13 +128,8 @@ List<byte[]> proof = server.genProof(oldSize);
 ```
 
 These types use `fr.isep.auditlog.LogServer`, `java.nio.file.Path`, and
-`java.util.List`. A runnable example creates and removes its own temporary
-ledger without requiring a prepared input file:
-
-```powershell
-mvn package
-java -cp target/classes fr.isep.auditlog.LogServerDemo
-```
+`java.util.List`. The sample ledger `examples/ledger.txt` contains events e1
+through e8. Cucumber and JUnit exercise the server with temporary ledger files.
 
 For an eight-event log, `genPath(4)` returns `[h3, h1..2, h5..8]` and
 `genProof(6)` returns `[h7..8, h5..6, h1..4]`, matching the PDF. The auditor
