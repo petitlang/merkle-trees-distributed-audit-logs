@@ -1,5 +1,9 @@
 # 前三个测试：运行与说明
 
+录制视频时，使用新建的 [独立场景测试目录](../scenario-tests/README.md)：
+三个 Java 文件分别对应三个场景，打印完整输入、树、哈希与验证过程。
+下面保留的是 Cucumber 自动测试的运行说明。
+
 本轮以 main 的 `324f8d1` 为基准，只整理老师要求的前三项测试。
 `src/main`、`pom.xml` 和原来的 Cucumber runner 均保持一致。
 测试调用现有的 `MerkleTree.build`、`LogServer.genPath` 和

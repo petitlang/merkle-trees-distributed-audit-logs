@@ -71,8 +71,19 @@ hash calculations, and first/middle/last membership checks:
 mvn "-Dtest=RunCucumberTest" "-Dcucumber.filter.tags=@first-three" test
 ```
 
-See [testing scenarios 1-3](docs/testing-first-three.md) for the numbered groups
-and screenshot instructions.
+For recording the video, [scenario-tests](scenario-tests/README.md) contains
+three independent Java programs, one per scenario, with detailed console output.
+From PowerShell at the repository root, run the selected scenario:
+
+```powershell
+.\scenario-tests\run.ps1 1
+.\scenario-tests\run.ps1 2
+.\scenario-tests\run.ps1 3
+```
+
+The launcher compiles the current production classes with JDK 17, without Maven.
+See [the automated testing guide](docs/testing-first-three.md) for the Cucumber
+groups and acceptance-test reports.
 
 ## MerkleTree usage
 

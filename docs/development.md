@@ -153,3 +153,20 @@ On 2026-11-24, JDK 17.0.12 and Maven 3.9.9 passed the 25 selected scenarios
 regression verification passed all 158 tests: 63 Cucumber and 95 JUnit cases.
 There were no failures or skips in that full build. See [the focused testing
 guide](testing-first-three.md) for formulas, commands, and screenshot guidance.
+
+## Independent scenario programs for video recording
+
+The `scenario-tests/` directory contains three separate Java source-launcher
+programs for scenarios 1, 2, and 3. A PowerShell launcher compiles the current
+production classes into `target/scenario-tests/classes` and runs only the
+selected scenario. The programs use fixture ledgers and the existing public
+APIs. They print full trees and roots, an explicit two-event hash calculation,
+and membership proofs with sibling direction and intermediate parent hashes.
+Final membership decisions use the production Auditor against fixed reference
+checkpoints. The tree used for trace labels is not passed to the Auditor.
+
+All three programs ran successfully on JDK 17.0.12 on 2026-11-24: scenario 1
+passed the eight-event and two-event checks; scenario 2 passed three memberships;
+scenario 3 passed three tree checks and nine memberships. Runtime transcripts
+are local ignored files under `target/scenario-tests/output/`. The production
+classes and the existing automated test suites were unchanged in this addition.
