@@ -1,12 +1,14 @@
 # 独立场景测试：演示视频用
 
-你负责的前三个场景各有一个独立的 Java 文件，每个文件都有自己的 `main`：
+五个场景各有一个独立的 Java 文件，每个文件都有自己的 `main`：
 
 ```text
 scenario-tests/
   Scenario1TreeConstruction.java
   Scenario2ValidMembership.java
   Scenario3NonPowerOfTwo.java
+  Scenario4AppendAndConsistency.java
+  Scenario5TamperDetection.java
   run.ps1
   ledgers/
     events5.txt
@@ -15,9 +17,8 @@ scenario-tests/
     events8.txt
 ```
 
-这些程序直接使用正式的 `MerkleTree`、`LogServer` 和 `Auditor`。
-成员验证场景也打印逐层重算，方便讲解；最终是否通过仍检查正式
-`Auditor.isMember()` 的结果。输入日志保持原样。
+这些程序直接使用项目的 `MerkleTree`、`LogServer` 和 `Auditor`。
+需要写入日志的场景使用临时副本，运行后清理，方便重复录制。
 
 ## 最简单的运行方式
 
@@ -26,14 +27,10 @@ scenario-tests/
 
 ```powershell
 .\scenario-tests\run.ps1 1
-```
-
-```powershell
 .\scenario-tests\run.ps1 2
-```
-
-```powershell
 .\scenario-tests\run.ps1 3
+.\scenario-tests\run.ps1 4
+.\scenario-tests\run.ps1 5
 ```
 
 脚本每次先把当前正式代码编译到 `target/scenario-tests/classes`，
@@ -46,9 +43,11 @@ scenario-tests/
 java --class-path target/scenario-tests/classes scenario-tests/Scenario1TreeConstruction.java
 java --class-path target/scenario-tests/classes scenario-tests/Scenario2ValidMembership.java
 java --class-path target/scenario-tests/classes scenario-tests/Scenario3NonPowerOfTwo.java
+java --class-path target/scenario-tests/classes scenario-tests/Scenario4AppendAndConsistency.java
+java --class-path target/scenario-tests/classes scenario-tests/Scenario5TamperDetection.java
 ```
 
-这里利用 Java 17 的源文件运行功能，不需要给三个场景再配置 Maven 项目。
+这里利用 Java 17 的源文件运行功能，不需要为演示场景另建 Maven 项目。
 
 ## 场景 1：八条记录建树，再核对两条记录
 
@@ -105,13 +104,26 @@ SHA-256 的数值由 MessageDigest 算出；视频中解释每一步的输入和
 最后必须出现 `SCENARIO 3 PASSED: 3 tree checks and 9 memberships.`。
 录制时可以在每种大小的根检查和三次成员结果处停留、讲解。
 
+## 场景 4：追加事件并验证一致性
+
+从五条记录开始，先单条追加 `e6`，再批量追加 `[e7, e8]`。每一步都会显示
+追加前后的大小、完整根哈希和 `Auditor.isConsistent` 的返回值。第二步还会打印
+`genProof(6)` 的三个哈希，按 `[h7..8, h5..6, h1..4]` 的顺序标注。
+最后显示从文件读回的八条记录。
+
+录制时先展示 `5 -> 6` 的第一处 `true`，再停在 `6 -> 8` 的证明顺序、
+第二处 `true` 和 `SCENARIO 4 PASSED`。
+
+## 场景 5：检测日志中的篡改
+
+先保存八条记录的可信根和第 4 条的审计路径，验证 `e4` 并显示 `true`。
+程序把临时日志的第 4 行改成 `e4-tampered`，重新打开日志并打印新的根哈希。
+之后用同一个可信根、索引和路径验证修改后的内容，预期返回 `false`。
+
+录制时对比 `Before` 和 `After` 两行，再展示 `SCENARIO 5 PASSED`。
+这里的 `false` 表示 Auditor 正确拒绝了被修改的记录。
+
 ## 失败时会怎样
 
-每个 `PASSED` 都在实际比较后才打印。根哈希不符、大小不对、
-逐层重建不符或正式 Auditor 返回 false，程序都会抛出异常，
-脚本也会报失败，方便定位问题。
-
-本次三个文件已分别执行成功。验证输出保存在本机
-`target/scenario-tests/output/scenario1.log`、`scenario2.log` 和 `scenario3.log`；
-这些是本次运行记录，脚本默认直接向终端打印。
-此目录不包含第 4、5 个场景，也不替代原有的 Cucumber/JUnit 自动测试。
+程序只在所有检查都满足预期时打印 `PASSED`。遇到意外的验证结果，
+脚本会报错退出。演示输出直接显示在终端，自动回归测试仍通过 `mvn test` 运行。

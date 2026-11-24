@@ -71,14 +71,17 @@ hash calculations, and first/middle/last membership checks:
 mvn "-Dtest=RunCucumberTest" "-Dcucumber.filter.tags=@first-three" test
 ```
 
-For recording the video, [scenario-tests](scenario-tests/README.md) contains
-three independent Java programs, one per scenario, with detailed console output.
+For recording the video, [scenario-tests](scenario-tests/README.md) contains an
+independent Java program for each of the five scenarios, with console output
+for the key checks.
 From PowerShell at the repository root, run the selected scenario:
 
 ```powershell
 .\scenario-tests\run.ps1 1
 .\scenario-tests\run.ps1 2
 .\scenario-tests\run.ps1 3
+.\scenario-tests\run.ps1 4  # Single and batch append, then consistency verification
+.\scenario-tests\run.ps1 5  # Membership succeeds before an edit and fails afterward
 ```
 
 The launcher compiles the current production classes with JDK 17, without Maven.

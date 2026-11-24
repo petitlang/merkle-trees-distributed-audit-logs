@@ -1,13 +1,13 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateRange(1, 3)]
+    [ValidateRange(1, 5)]
     [int]$Scenario
 )
 
 $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
-    # 直接编译项目的正式代码，不需要 Maven，也不改动 Maven 的 target/classes。
+    # Compile the production classes into a separate directory for the scenarios.
     $classesDirectory = 'target/scenario-tests/classes'
     New-Item -ItemType Directory -Path $classesDirectory -Force | Out-Null
     $sources = @(
@@ -21,11 +21,13 @@ try {
         throw 'Compilation failed. Check that JDK 17 or later is on PATH.'
     }
 
-    # 每个场景都是独立的 Java 文件，只运行本次选择的那一个。
+    # Run only the selected scenario.
     $scenarioFiles = @(
         'scenario-tests/Scenario1TreeConstruction.java'
         'scenario-tests/Scenario2ValidMembership.java'
         'scenario-tests/Scenario3NonPowerOfTwo.java'
+        'scenario-tests/Scenario4AppendAndConsistency.java'
+        'scenario-tests/Scenario5TamperDetection.java'
     )
     & java --class-path $classesDirectory $scenarioFiles[$Scenario - 1]
     if ($LASTEXITCODE -ne 0) {
