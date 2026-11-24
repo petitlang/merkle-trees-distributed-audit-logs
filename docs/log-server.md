@@ -1,7 +1,7 @@
 # LogServer: usage and proof contract
 
-`LogServer` manages the ledger and generates proofs. It reuses the existing
-`MerkleTree`; it does not implement the production Auditor or network bonus.
+`LogServer` manages the ledger and generates proofs from `MerkleTree`.
+The separate `Auditor` verifies proofs against a log checkpoint.
 
 ## Build and test
 
@@ -82,10 +82,8 @@ For other sizes the proof follows the same recursive prefix boundary. The
 seed is the hash of the complete subtree where the old prefix ends. If the
 old size is a power of two, that seed is the already trusted old root and
 is not sent. Otherwise the first sibling precedes the seed, matching the
-PDF's order; subsequent siblings run bottom-up. To use a standard seed-first
-iterative consistency verifier, swap the first two hashes only when oldSize
-is not a power of two. The test-only `ProofChecks` demonstrates this contract
-independently of the production generator.
+PDF's order. Subsequent siblings run bottom-up. `Auditor` reads the proof in
+this order and checks that it consumes exactly the supplied hashes.
 
 Examples:
 
@@ -112,11 +110,10 @@ root-to-leaf boundary. Each visited level adds at most two existing hashes.
 Both take O(log n) time and O(log n) output and stack space; they never rebuild
 subtrees. Single-event trees and unchanged-size proofs take O(1).
 
-Membership verification (`isMember`, implemented later in the Auditor) uses
-one leaf hash and one parent hash per sibling: O(log n) time plus the event's
-UTF-8 byte length. It can fold the path with O(1) working space apart from
-the supplied proof. The test-only checker also materializes O(log n) direction
-flags for clarity.
+`Auditor.isMember` computes one leaf hash and one parent hash per sibling.
+It takes O(log n) time plus hashing the event's UTF-8 bytes, with O(log n)
+stack space. `Auditor.isConsistent` rebuilds two roots along the prefix
+boundary in O(log n) time and stack space.
 
 This implementation rebuilds the tree on append: O(n) hashes and O(n) space,
 plus encoding/hashing all event bytes. This is sufficient for the lab; an
@@ -144,12 +141,10 @@ Run only the new acceptance scenarios:
 mvn "-Dtest=RunCucumberTest" "-Dcucumber.filter.tags=@log-server" test
 ```
 
-Independent checks cover every event and every possible old size for 17 tree
+The server and auditor tests cover every event and every possible old size for 17 tree
 sizes from 1 to 65, especially around powers of two. Additional cases cover
 tampered events/proofs/history, invalid requests, defensive copies, UTF-8,
 line endings, empty files, batch validation, persistence, and I/O errors.
 
-The reference verifiers live only under `src/test`; they validate the server's
-proof output and do not claim to complete the production Auditor component.
-The full assignment still needs that Auditor, the distributed bonus if chosen,
-and the final report/screenshots/video.
+Fixed hash vectors remain in the tests so proof order and checkpoint values
+can be checked independently of the server and auditor implementations.

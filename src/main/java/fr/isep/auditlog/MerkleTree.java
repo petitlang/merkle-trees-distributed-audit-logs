@@ -27,7 +27,7 @@ public final class MerkleTree {
             throw new IllegalArgumentException("event index must be at least 1");
         }
 
-        this.hash = taggedHash((byte) 0x00, event.getBytes(StandardCharsets.UTF_8));
+        this.hash = hashLeaf(event);
         this.left = null;
         this.right = null;
         this.startIndex = index;
@@ -49,7 +49,7 @@ public final class MerkleTree {
                     "left child must contain the largest power of two below the parent size");
         }
 
-        this.hash = taggedHash((byte) 0x01, left.hash, right.hash);
+        this.hash = hashParent(left.hash, right.hash);
         this.left = left;
         this.right = right;
         this.startIndex = left.startIndex;
@@ -81,6 +81,14 @@ public final class MerkleTree {
         return new MerkleTree(
                 build(events, from, leftSize),
                 build(events, from + leftSize, size - leftSize));
+    }
+
+    static byte[] hashLeaf(String event) {
+        return taggedHash((byte) 0x00, event.getBytes(StandardCharsets.UTF_8));
+    }
+
+    static byte[] hashParent(byte[] left, byte[] right) {
+        return taggedHash((byte) 0x01, left, right);
     }
 
     private static byte[] taggedHash(byte tag, byte[]... parts) {

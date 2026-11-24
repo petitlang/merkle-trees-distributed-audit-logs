@@ -35,7 +35,7 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     Then the server contains 8 events
     And reopening the ledger preserves its events and root
     When I request a consistency proof for the saved version
-    Then an independent consistency check succeeds
+    Then the auditor accepts the new checkpoint
     And the proof hashes cover ranges "7-8,5-6,1-4" in that order
 
   Scenario: Separate an appended event from an unterminated last line
@@ -49,7 +49,7 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     Given a ledger containing <size> numbered events
     And I open the log server
     When I request the audit path for event <index>
-    Then the independent membership check for event <index> succeeds
+    Then the auditor confirms membership for event <index>
 
     Examples:
       | size | index |
@@ -76,14 +76,14 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     Given a ledger containing 8 numbered events
     And I open the log server
     When I request the audit path for event 4
-    Then the independent membership check rejects "tampered" at index 4
+    Then the auditor rejects "tampered" at index 4
 
   Scenario: Reject a changed audit path against the saved root
     Given a ledger containing 8 numbered events
     And I open the log server
     When I request the audit path for event 4
     And I change the first proof hash
-    Then the independent membership check for event 4 fails
+    Then the auditor rejects the path for event 4
 
   Scenario Outline: Prove consistency for different old and new sizes
     Given a ledger containing <old> numbered events
@@ -91,7 +91,7 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     And I save the current size and root
     When I append numbered events <first> through <new> as a batch
     And I request a consistency proof for the saved version
-    Then an independent consistency check succeeds
+    Then the auditor accepts the new checkpoint
 
     Examples:
       | old | first | new |
@@ -109,7 +109,7 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     And I save the current size and root
     When I request a consistency proof for the saved version
     Then the proof contains 0 hashes
-    And an independent consistency check succeeds
+    And the auditor accepts the new checkpoint
 
   Scenario: Reject a changed consistency proof
     Given a ledger containing 6 numbered events
@@ -118,7 +118,7 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     When I append numbered events 7 through 8 as a batch
     And I request a consistency proof for the saved version
     And I change the first proof hash
-    Then the independent consistency check fails
+    Then the auditor rejects the new checkpoint
 
   Scenario: Detect a rewritten historical record after loading the modified file
     Given a ledger containing 6 numbered events
@@ -127,7 +127,7 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     When I rewrite the ledger with a changed first event and reopen it
     And I append numbered events 7 through 8 as a batch
     And I request a consistency proof for the saved version
-    Then the independent consistency check fails
+    Then the auditor rejects the new checkpoint
 
   Scenario Outline: Reject invalid audit indices
     Given a ledger containing 8 numbered events

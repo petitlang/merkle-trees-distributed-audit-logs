@@ -1,7 +1,8 @@
 package fr.isep.auditlog.bdd;
 
+import fr.isep.auditlog.Auditor;
 import fr.isep.auditlog.LogServer;
-import fr.isep.auditlog.support.ProofChecks;
+import fr.isep.auditlog.MerkleTree;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -23,7 +24,7 @@ public class LogServerSteps {
     private Path ledger;
     private List<String> events;
     private LogServer server;
-    private byte[] trustedRoot;
+    private Auditor auditor;
     private int oldSize;
     private byte[] oldRoot;
     private List<byte[]> proof;
@@ -56,7 +57,7 @@ public class LogServerSteps {
     @When("I open the log server")
     public void openServer() throws IOException {
         server = new LogServer(ledger);
-        trustedRoot = server.getRoot();
+        auditor = auditorForCurrentCheckpoint();
     }
 
     @Then("the server contains {int} events")
@@ -87,7 +88,7 @@ public class LogServerSteps {
         LogServer reloaded = new LogServer(ledger);
         assertEquals(events, Files.readAllLines(ledger, StandardCharsets.UTF_8));
         assertEquals(events.size(), reloaded.getSize());
-        assertArrayEquals(ProofChecks.root(events), server.getRoot());
+        assertArrayEquals(MerkleTree.build(events).getHash(), server.getRoot());
         assertArrayEquals(server.getRoot(), reloaded.getRoot());
     }
 
@@ -96,21 +97,19 @@ public class LogServerSteps {
         proof = server.genPath(index);
     }
 
-    @Then("the independent membership check for event {int} succeeds")
+    @Then("the auditor confirms membership for event {int}")
     public void membershipSucceeds(int index) {
-        assertTrue(ProofChecks.isMember(events.get(index - 1), index,
-                server.getSize(), proof, trustedRoot));
+        assertTrue(auditor.isMember(events.get(index - 1), index, proof));
     }
 
-    @Then("the independent membership check for event {int} fails")
+    @Then("the auditor rejects the path for event {int}")
     public void membershipFails(int index) {
-        assertFalse(ProofChecks.isMember(events.get(index - 1), index,
-                server.getSize(), proof, trustedRoot));
+        assertFalse(auditor.isMember(events.get(index - 1), index, proof));
     }
 
-    @Then("the independent membership check rejects {string} at index {int}")
+    @Then("the auditor rejects {string} at index {int}")
     public void rejectTamperedEvent(String event, int index) {
-        assertFalse(ProofChecks.isMember(event, index, server.getSize(), proof, trustedRoot));
+        assertFalse(auditor.isMember(event, index, proof));
     }
 
     @Then("the proof hashes cover ranges {string} in that order")
@@ -121,7 +120,7 @@ public class LogServerSteps {
             String[] bounds = expectedRanges[i].split("-");
             int first = Integer.parseInt(bounds[0]);
             int last = Integer.parseInt(bounds[1]);
-            assertArrayEquals(ProofChecks.root(events.subList(first - 1, last)), proof.get(i));
+            assertArrayEquals(MerkleTree.build(events.subList(first - 1, last)).getHash(), proof.get(i));
         }
     }
 
@@ -136,16 +135,14 @@ public class LogServerSteps {
         proof = server.genProof(oldSize);
     }
 
-    @Then("an independent consistency check succeeds")
+    @Then("the auditor accepts the new checkpoint")
     public void consistencySucceeds() {
-        assertTrue(ProofChecks.isConsistent(oldSize, oldRoot,
-                server.getSize(), server.getRoot(), proof));
+        assertTrue(auditorForCurrentCheckpoint().isConsistent(oldSize, oldRoot, proof));
     }
 
-    @Then("the independent consistency check fails")
+    @Then("the auditor rejects the new checkpoint")
     public void consistencyFails() {
-        assertFalse(ProofChecks.isConsistent(oldSize, oldRoot,
-                server.getSize(), server.getRoot(), proof));
+        assertFalse(auditorForCurrentCheckpoint().isConsistent(oldSize, oldRoot, proof));
     }
 
     @Then("the proof contains {int} hashes")
@@ -178,6 +175,10 @@ public class LogServerSteps {
     @Then("the server rejects the request with an illegal argument")
     public void rejectedRequest() {
         assertNotNull(requestError);
+    }
+
+    private Auditor auditorForCurrentCheckpoint() {
+        return new Auditor(server.getSize(), server.getRoot());
     }
 
     private static List<String> numberedEvents(int first, int last) {

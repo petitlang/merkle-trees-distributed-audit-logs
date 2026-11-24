@@ -110,3 +110,27 @@ not validate a production Auditor or a distributed deployment.
 The integrated build uses `MerkleTree.build(events)` when opening the ledger
 and after an append. `mvn -B -ntp clean verify` on JDK 17.0.18 passed all 143
 tests and produced the JAR.
+
+## Auditor verification
+
+The auditor verifies sibling hashes and prefix proofs against a checkpoint.
+It shares leaf and parent hashing with `MerkleTree`. Fixed checkpoint roots
+and proof hashes were calculated independently with Python `hashlib`.
+
+Each round began with Gherkin and executable tests while the corresponding
+verifier still returned `false`:
+
+| Round | RED | GREEN |
+| --- | --- | --- |
+| Membership (`@membership`) | The published path and two valid JUnit paths failed. | Recursive root reconstruction made the focused suite pass. |
+| Consistency (`@consistency`) | Three published proofs and two valid JUnit checks failed. | Reconstructing both roots made all 157 tests pass. |
+
+Focused commands used `mvn -B -ntp "-Dtest=RunCucumberTest,AuditorTest"`
+with `"-Dcucumber.filter.tags=@membership" test` or
+`"-Dcucumber.filter.tags=@consistency" test`.
+
+For BLUE, the server scenarios and unit tests were migrated to the production
+auditor. The duplicate test verifier was removed. Fixed roots and exact-order
+proof vectors still check both sides of the integration independently.
+`mvn -B -ntp clean verify` on JDK 17.0.18 passed 62 Cucumber examples and 95
+JUnit cases, with no failures or skips, and produced the JAR.

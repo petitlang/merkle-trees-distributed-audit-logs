@@ -1,6 +1,5 @@
 package fr.isep.auditlog;
 
-import fr.isep.auditlog.support.ProofChecks;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,45 +18,50 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LogServerTest {
+    private static final HexFormat HEX = HexFormat.of();
+    private static final String ROOT_8 = "7dc0f08884fa7f18ba933c2d46d41f0de6246cdaff7d4808e675beea75e52cd8";
+    private static final String HASH_5_TO_8 = "dda44e8c742b4d19cbd22526fd4418606dd10bb2422929669853d9f8dca94591";
+
     @TempDir
     Path directory;
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64, 65})
-    void everyEventHasAnIndependentMembershipProof(int size) throws IOException {
+    void theAuditorVerifiesEveryEvent(int size) throws IOException {
         List<String> events = events(size);
         LogServer server = open(events);
-        byte[] trustedRoot = ProofChecks.root(events);
+        byte[] trustedRoot = MerkleTree.build(events).getHash();
         assertArrayEquals(trustedRoot, server.getRoot());
+        Auditor auditor = new Auditor(size, trustedRoot);
         for (int index = 1; index <= size; index++) {
             List<byte[]> path = server.genPath(index);
             String event = events.get(index - 1);
-            assertTrue(ProofChecks.isMember(event, index, size, path, trustedRoot),
+            assertTrue(auditor.isMember(event, index, path),
                     "valid path: size=" + size + ", index=" + index);
-            assertFalse(ProofChecks.isMember(event + "-changed", index, size, path, trustedRoot));
+            assertFalse(auditor.isMember(event + "-changed", index, path));
             assertTrue(path.size() <= 32 - Integer.numberOfLeadingZeros(size - 1));
             if (!path.isEmpty()) {
                 path.get(0)[0] ^= 1;
-                assertFalse(ProofChecks.isMember(event, index, size, path, trustedRoot));
+                assertFalse(auditor.isMember(event, index, path));
             }
         }
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64, 65})
-    void everyPreviousSizeHasAnIndependentConsistencyProof(int size) throws IOException {
+    void theAuditorVerifiesEveryPreviousSize(int size) throws IOException {
         List<String> events = events(size);
         LogServer server = open(events);
-        byte[] newRoot = ProofChecks.root(events);
+        Auditor auditor = new Auditor(size, MerkleTree.build(events).getHash());
         for (int oldSize = 1; oldSize <= size; oldSize++) {
-            byte[] oldRoot = ProofChecks.root(events.subList(0, oldSize));
+            byte[] oldRoot = MerkleTree.build(events.subList(0, oldSize)).getHash();
             List<byte[]> proof = server.genProof(oldSize);
-            assertTrue(ProofChecks.isConsistent(oldSize, oldRoot, size, newRoot, proof),
+            assertTrue(auditor.isConsistent(oldSize, oldRoot, proof),
                     "valid extension: " + oldSize + " -> " + size);
             assertTrue(proof.size() <= 1 + 32 - Integer.numberOfLeadingZeros(size - 1));
             if (!proof.isEmpty()) {
                 proof.get(0)[0] ^= 1;
-                assertFalse(ProofChecks.isConsistent(oldSize, oldRoot, size, newRoot, proof));
+                assertFalse(auditor.isConsistent(oldSize, oldRoot, proof));
             }
         }
     }
@@ -65,21 +69,22 @@ class LogServerTest {
     @Test
     void followsBothProofExamplesFromTheAssignmentExactly() throws IOException {
         LogServer server = open(events(8));
+        // Fixed vectors calculated with Python hashlib, in the assignment's order.
         assertHashes(List.of(
-                ProofChecks.root(List.of("e3")),
-                ProofChecks.root(events(2)),
-                ProofChecks.root(List.of("e5", "e6", "e7", "e8"))), server.genPath(4));
+                HEX.parseHex("d5bdb58a19173a6a0111df3f1f62dbaa00e44221e0f09b47489812a010cd5314"),
+                HEX.parseHex("1ae210a506da2f0264c59f2041fe70fe9bfceda1cbb394471e9587e44b430216"),
+                HEX.parseHex(HASH_5_TO_8)), server.genPath(4));
         assertHashes(List.of(
-                ProofChecks.root(List.of("e7", "e8")),
-                ProofChecks.root(List.of("e5", "e6")),
-                ProofChecks.root(events(4))), server.genProof(6));
+                HEX.parseHex("5eda4828534046536288bbb71ddfd3da6d3cf0ecddc8f4883206c00dd8ed3180"),
+                HEX.parseHex("522d9d790d281d06b68af79d5212826fe65eb8248cf004464d4e8b0f2df0d392"),
+                HEX.parseHex("7abfaa969284fb86f37f1e0aa9ade022007b377e88766f4d0d2d6419a8d20d40")),
+                server.genProof(6));
     }
 
     @Test
     void oldPowerOfTwoRootIsAlreadyKnownAndNeedNotBeSentAgain() throws IOException {
         LogServer server = open(events(8));
-        assertHashes(List.of(ProofChecks.root(List.of("e5", "e6", "e7", "e8"))),
-                server.genProof(4));
+        assertHashes(List.of(HEX.parseHex(HASH_5_TO_8)), server.genProof(4));
         assertTrue(server.genProof(8).isEmpty());
     }
 
@@ -90,9 +95,9 @@ class LogServerTest {
         server.append("e6");
         server.append(List.of("e7", "e8"));
         assertEquals(events(8), Files.readAllLines(ledger(), StandardCharsets.UTF_8));
-        assertArrayEquals(ProofChecks.root(events(8)), server.getRoot());
+        assertEquals(ROOT_8, server.getRootHex());
         assertArrayEquals(server.getRoot(), new LogServer(ledger()).getRoot());
-        assertTrue(ProofChecks.isConsistent(5, oldRoot, 8, server.getRoot(), server.genProof(5)));
+        assertTrue(new Auditor(8, HEX.parseHex(ROOT_8)).isConsistent(5, oldRoot, server.genProof(5)));
     }
 
     @ParameterizedTest
@@ -102,7 +107,8 @@ class LogServerTest {
         LogServer server = new LogServer(ledger());
         server.append("e2");
         assertEquals(List.of("e1", "e2"), Files.readAllLines(ledger(), StandardCharsets.UTF_8));
-        assertArrayEquals(ProofChecks.root(events(2)), new LogServer(ledger()).getRoot());
+        assertEquals("1ae210a506da2f0264c59f2041fe70fe9bfceda1cbb394471e9587e44b430216",
+                new LogServer(ledger()).getRootHex());
     }
 
     @Test
@@ -111,12 +117,14 @@ class LogServerTest {
         Files.writeString(ledger(), String.join("\r\n", expected) + "\r\n", StandardCharsets.UTF_8);
         LogServer server = new LogServer(ledger());
         assertEquals(expected.size(), server.getSize());
-        assertArrayEquals(ProofChecks.root(expected), server.getRoot());
+        assertEquals("949351435708e8d6c1ff38a05c66536645f91e567f102f484eee80f12547a5b8",
+                server.getRootHex());
         server.append(List.of("", "  "));
         List<String> appended = new ArrayList<>(expected);
         appended.addAll(List.of("", "  "));
         assertEquals(appended, Files.readAllLines(ledger(), StandardCharsets.UTF_8));
-        assertArrayEquals(ProofChecks.root(appended), new LogServer(ledger()).getRoot());
+        assertEquals("cecfe8084e2eaa09a252cef77ff3762c44921b93057469d911708e8236100c50",
+                new LogServer(ledger()).getRootHex());
     }
 
     @Test
@@ -130,7 +138,8 @@ class LogServerTest {
         server.append("");
         server.append("e2");
         assertEquals(List.of("", "e2"), Files.readAllLines(ledger(), StandardCharsets.UTF_8));
-        assertArrayEquals(ProofChecks.root(List.of("", "e2")), new LogServer(ledger()).getRoot());
+        assertEquals("7d61a489abea5f2bfa1d198650bccc9de0c3b643334a64d1a9574e827bccfcbe",
+                new LogServer(ledger()).getRootHex());
     }
 
     @Test
@@ -196,26 +205,28 @@ class LogServerTest {
         changedProof.get(0)[0] ^= 1;
         assertThrows(UnsupportedOperationException.class, () -> changedPath.add(new byte[32]));
         assertThrows(UnsupportedOperationException.class, () -> changedProof.clear());
-        assertArrayEquals(ProofChecks.root(events(8)), server.getRoot());
+        assertEquals(ROOT_8, server.getRootHex());
         assertHashes(originalPath, server.genPath(4));
         assertHashes(originalProof, server.genProof(6));
-        assertEquals(HexFormat.of().formatHex(server.getRoot()), server.getRootHex());
+        assertEquals(HEX.formatHex(server.getRoot()), server.getRootHex());
     }
 
     @Test
-    void proofChecksRejectChangedTrustedRootsAndMisstatedIndices() throws IOException {
+    void theAuditorRejectsChangedTrustedRootsAndMisstatedIndices() throws IOException {
         LogServer server = open(events(8));
-        byte[] oldRoot = ProofChecks.root(events(6));
-        byte[] newRoot = server.getRoot();
+        byte[] oldRoot = HEX.parseHex("0ec8a9f5275054d630180595e5d356faf48ea547c96e4b9c9ebe89303ce326b8");
+        byte[] newRoot = HEX.parseHex(ROOT_8);
         byte[] changedOld = oldRoot.clone();
         changedOld[0] ^= 1;
         byte[] changedNew = newRoot.clone();
         changedNew[0] ^= 1;
         List<byte[]> proof = server.genProof(6);
-        assertFalse(ProofChecks.isConsistent(6, changedOld, 8, newRoot, proof));
-        assertFalse(ProofChecks.isConsistent(6, oldRoot, 8, changedNew, proof));
-        assertFalse(ProofChecks.isMember("e4", 3, 8, server.genPath(4), newRoot));
-        assertFalse(ProofChecks.isConsistent(8, newRoot, 8, changedNew, List.of()));
+        Auditor auditor = new Auditor(8, newRoot);
+        Auditor changedAuditor = new Auditor(8, changedNew);
+        assertFalse(auditor.isConsistent(6, changedOld, proof));
+        assertFalse(changedAuditor.isConsistent(6, oldRoot, proof));
+        assertFalse(auditor.isMember("e4", 3, server.genPath(4)));
+        assertFalse(changedAuditor.isConsistent(8, newRoot, List.of()));
     }
 
     private LogServer open(List<String> events) throws IOException {

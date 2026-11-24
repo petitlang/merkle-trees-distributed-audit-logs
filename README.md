@@ -18,19 +18,19 @@ The original assignment is available in [lab_merkle.pdf](lab_merkle.pdf).
 
 ## Status
 
-Implemented MerkleTree and a file-backed LogServer in Java 17, with Cucumber
-acceptance scenarios and JUnit tests. Auditor, Client, and the optional gRPC
-service will be added in later steps.
+The Java 17 implementation includes `MerkleTree`, a file-backed `LogServer`,
+and `Auditor`, with Cucumber scenarios and JUnit tests. The client and optional
+gRPC service are planned.
 
 ## Build and test
 
-Requires JDK 17 and Maven 3. Set JAVA_HOME to the JDK 17 installation and ensure
-that its bin directory is on PATH. Check the Java version used by Maven:
+Requires JDK 17 and Maven 3. Set `JAVA_HOME` to the JDK 17 installation and put
+its `bin` directory on `PATH`. From the repository root, check the Java version
+and build the project:
 
 ```powershell
 mvn -version
-mvn test
-mvn package
+mvn clean verify
 ```
 
 The Maven compiler targets Java 17. The tree itself uses only the Java standard
@@ -107,30 +107,46 @@ hash vectors, empty/UTF-8/emoji events, whitespace preservation, tree sizes up t
 1025, node ranges, first/middle/last-event tampering, event order, immutability,
 invalid inputs, and indices near Integer.MAX_VALUE.
 
-The BLUE review passed on JDK 17 with 100% branch coverage and 55/57 executable
+The initial BLUE review passed on JDK 17 with 100% branch coverage and 55/57 executable
 lines covered in MerkleTree. The two uncovered lines handle an unavailable
 SHA-256 implementation, which a standard JDK provides. These coverage figures
 apply to `MerkleTree`. The development record lists the verification commands.
 
-## LogServer usage
+## LogServer and Auditor example
 
 The server loads an existing UTF-8 text ledger, with one event per line.
-It persists single and batch appends, returns the current size/root, and
-generates membership paths and consistency proofs using one-based indices.
+It supports `append(String)` for one event and `append(List<String>)` for a batch.
+The following example creates a temporary ledger, saves its six-event checkpoint,
+appends two events, and verifies the new checkpoint and event 4.
 
 ```java
-LogServer server = new LogServer(Path.of("ledger.txt"));
-int oldSize = server.getSize();
-byte[] oldRoot = server.getRoot();
-server.append("e7");
-server.append(List.of("e8", "e9"));
-List<byte[]> path = server.genPath(4);
-List<byte[]> proof = server.genProof(oldSize);
+import fr.isep.auditlog.Auditor;
+import fr.isep.auditlog.LogServer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
+Path ledger = Files.createTempFile("audit-example-", ".txt");
+try {
+    Files.write(ledger, List.of("e1", "e2", "e3", "e4", "e5", "e6"));
+    LogServer server = new LogServer(ledger);
+    int oldSize = server.getSize();
+    byte[] oldRoot = server.getRoot();
+
+    server.append(List.of("e7", "e8"));
+    Auditor auditor = new Auditor(server.getSize(), server.getRoot());
+    boolean consistent = auditor.isConsistent(oldSize, oldRoot, server.genProof(oldSize));
+    boolean member = consistent && auditor.isMember("e4", 4, server.genPath(4));
+
+    System.out.println("Consistent extension: " + consistent);
+    System.out.println("Event 4 verified: " + member);
+} finally {
+    Files.deleteIfExists(ledger);
+}
 ```
 
-These types use `fr.isep.auditlog.LogServer`, `java.nio.file.Path`, and
-`java.util.List`. The sample ledger `examples/ledger.txt` contains events e1
-through e8. Cucumber and JUnit exercise the server with temporary ledger files.
+Both checks print `true`. For a read-only example, the sample ledger
+[`examples/ledger.txt`](examples/ledger.txt) already contains events `e1` to `e8`.
 
 For an eight-event log, `genPath(4)` returns `[h3, h1..2, h5..8]` and
 `genProof(6)` returns `[h7..8, h5..6, h1..4]`, matching the PDF. The auditor
@@ -138,9 +154,15 @@ must check these against trusted roots. See [LogServer contract and BDD
 record](docs/log-server.md) for hash ordering, empty-log handling, complexity,
 and the RED/GREEN/BLUE development record.
 
-The combined suite contains 55 Cucumber examples and 88 JUnit cases, with
-independent proof verification and valid/tampered cases. The verifiers in
-`src/test` are test oracles; the production Auditor remains to be implemented.
+The caller supplies the trusted starting checkpoint. After a consistency check
+succeeds, the caller can accept the new checkpoint and use it to verify membership.
+An audit path contains raw SHA-256 sibling hashes in leaf-to-root order. The event
+index is one-based. Missing, extra, malformed, or incorrect proof hashes cause
+verification to return `false`.
+
+The suite has 62 Cucumber examples and 95 JUnit cases. Fixed checkpoint and
+proof vectors test the verifier independently of the server. The server tests
+also check generated proofs with the auditor across a range of log sizes.
 
 ## Deliverables
 
