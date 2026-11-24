@@ -69,7 +69,7 @@ validation results.
 import fr.isep.auditlog.MerkleTree;
 import java.util.List;
 
-MerkleTree tree = MerkleTree.fromEvents(
+MerkleTree tree = MerkleTree.build(
         List.of("e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8"));
 
 System.out.println(tree.getHashHex());
@@ -91,7 +91,9 @@ MerkleTree parent = new MerkleTree(first, second);
   `getHashHex()` returns a printable representation.
 - Empty sequences are rejected because this class represents an actual node.
   Empty event strings and duplicate events are allowed. Null events are rejected.
-- Building n events takes O(n) time and O(n) storage, with O(log n) recursion depth.
+- Building the tree makes n indexed reads and stores O(n) nodes, with O(log n)
+  recursion depth. Use a list with fast indexed reads, such as `ArrayList`, and
+  keep it unchanged during construction.
 
 For events e1 through e8, the expected root is:
 

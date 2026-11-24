@@ -77,5 +77,4 @@ Feature: Build a tamper-evident Merkle tree
 
   Scenario: Reject an empty sequence because it has no node
     Given an empty event sequence
-    When I try to build the Merkle tree
-    Then construction is rejected with an illegal argument
+    Then building the Merkle tree throws an IllegalArgumentException
