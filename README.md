@@ -2,6 +2,8 @@
 
 Lab project for II.3502 - Distributed Architecture and Programming (2026/27).
 
+Developed by **Mouzheng LI** and **Yuefan LIU**, using **JDK 17**.
+
 ## Lab specification
 
 The original assignment is available in [lab_merkle.pdf](lab_merkle.pdf).
