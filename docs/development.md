@@ -67,5 +67,34 @@ On Windows, an ASCII-only execution-data path avoids encoding issues in the
 coverage agent arguments. Build output, coverage data, and local tool settings
 are excluded from version control.
 
-Membership paths, consistency proofs, server operations, and gRPC are outside
-this review and will have separate acceptance scenarios.
+Membership paths, consistency proofs, server operations, and gRPC were outside
+the original MerkleTree review above.
+
+## LogServer addition on yuefan
+
+LogServer now has its own acceptance scenarios. See [the behavior contract
+and RED/GREEN/BLUE record](log-server.md). The original MerkleTree source and
+tests were preserved. Production Auditor and network transport remain separate
+components.
+
+Final BLUE validation on 2026-11-24 used this machine's JDK 17.0.12 and Maven
+3.9.9 (the installed Maven executable was invoked directly because it is not
+on PATH):
+
+- `mvn clean verify` passed: 55 Cucumber examples, 53 LogServer JUnit cases,
+  and 35 existing MerkleTree JUnit cases; 143 total, no failures or skips.
+- `java -cp target/classes fr.isep.auditlog.LogServerDemo` passed. It loaded
+  five records, appended e6, saved the six-record root, appended e7/e8 as a
+  batch, printed both exact assignment proof lists, and reopened eight records
+  with the same root.
+- The six-record root was
+  `0ec8a9f5275054d630180595e5d356faf48ea547c96e4b9c9ebe89303ce326b8`;
+  the eight-record root was
+  `7dc0f08884fa7f18ba933c2d46d41f0de6246cdaff7d4808e675beea75e52cd8`.
+- A final `mvn test` after removing an unreachable consistency-helper branch
+  preserved the same 143 passing cases.
+
+RED, GREEN, and BLUE command logs are local ignored files under `tmp/`.
+Current HTML/JSON Cucumber output is under `target/cucumber/`. This work
+validates LogServer behavior with independent test-only verifiers; it does
+not validate a production Auditor or a distributed deployment.

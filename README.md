@@ -18,8 +18,9 @@ The original assignment is available in [lab_merkle.pdf](lab_merkle.pdf).
 
 ## Status
 
-Implemented the MerkleTree class in Java 17. LogServer, Auditor, Client, and the
-gRPC service will be added in later steps.
+Implemented MerkleTree and a file-backed LogServer in Java 17, with Cucumber
+acceptance scenarios and JUnit tests. Auditor, Client, and the optional gRPC
+service will be added in later steps.
 
 ## Build and test
 
@@ -99,7 +100,7 @@ For events e1 through e8, the expected root is:
 7dc0f08884fa7f18ba933c2d46d41f0de6246cdaff7d4808e675beea75e52cd8
 ```
 
-The suite contains 16 Cucumber examples and 35 JUnit cases. It covers independent
+The MerkleTree coverage contains 16 Cucumber examples and 35 JUnit cases. It covers independent
 hash vectors, empty/UTF-8/emoji events, whitespace preservation, tree sizes up to
 1025, node ranges, first/middle/last-event tampering, event order, immutability,
 invalid inputs, and indices near Integer.MAX_VALUE.
@@ -109,6 +110,41 @@ lines covered in MerkleTree. The two uncovered lines handle an unavailable
 SHA-256 implementation, which a standard JDK provides. This validation covers
 the current tree class; proofs, server operations, and gRPC will receive their
 own scenarios as they are implemented. See the development record for commands.
+
+## LogServer usage
+
+The server loads an existing UTF-8 text ledger, with one event per line.
+It persists single and batch appends, returns the current size/root, and
+generates membership paths and consistency proofs using one-based indices.
+
+```java
+LogServer server = new LogServer(Path.of("ledger.txt"));
+int oldSize = server.getSize();
+byte[] oldRoot = server.getRoot();
+server.append("e7");
+server.append(List.of("e8", "e9"));
+List<byte[]> path = server.genPath(4);
+List<byte[]> proof = server.genProof(oldSize);
+```
+
+These types use `fr.isep.auditlog.LogServer`, `java.nio.file.Path`, and
+`java.util.List`. A runnable example creates and removes its own temporary
+ledger without requiring a prepared input file:
+
+```powershell
+mvn package
+java -cp target/classes fr.isep.auditlog.LogServerDemo
+```
+
+For an eight-event log, `genPath(4)` returns `[h3, h1..2, h5..8]` and
+`genProof(6)` returns `[h7..8, h5..6, h1..4]`, matching the PDF. The auditor
+must check these against trusted roots. See [LogServer contract and BDD
+record](docs/log-server.md) for hash ordering, empty-log handling, complexity,
+and the RED/GREEN/BLUE development record.
+
+The combined suite contains 55 Cucumber examples and 88 JUnit cases, with
+independent proof verification and valid/tampered cases. The verifiers in
+`src/test` are test oracles; the production Auditor remains to be implemented.
 
 ## Deliverables
 
