@@ -14,9 +14,15 @@ Feature: Build a tamper-evident Merkle tree
     Examples:
       | event    | hash                                                             |
       | e1       | d38b823b070424fc9303ff6f20f4ddeef6dc32aa02c75d9c8c3ae46062c78f6b |
-      | 用户登录 | 056e4ccd70746090c5087c1f0279edbfa2a34009fe32cce9dce5bc23d77fce6b |
       |          | 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d |
       | 🙂       | a07d9492ff6d9dbe8d9b22ef2247924a8598c53e8f6944e057e2a3a605c9988b |
+
+  Scenario: Commit a multibyte UTF-8 event
+    Given a Unicode login event
+    When I build the Merkle tree
+    Then the root hash is "056e4ccd70746090c5087c1f0279edbfa2a34009fe32cce9dce5bc23d77fce6b"
+    And the root covers events 1 through 1
+    And the root is a leaf without children
 
   Scenario Outline: Reproduce independently calculated root hashes
     Given the first <size> events named e1 onwards

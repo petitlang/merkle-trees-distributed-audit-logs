@@ -20,7 +20,7 @@ class MerkleTreeTest {
         assertEquals("d38b823b070424fc9303ff6f20f4ddeef6dc32aa02c75d9c8c3ae46062c78f6b",
                 leaf.getHashHex());
         assertEquals("056e4ccd70746090c5087c1f0279edbfa2a34009fe32cce9dce5bc23d77fce6b",
-                new MerkleTree("用户登录", 2).getHashHex());
+                new MerkleTree("\u7528\u6237\u767b\u5f55", 2).getHashHex());
         assertTrue(leaf.isLeaf());
         assertNull(leaf.getLeft());
         assertNull(leaf.getRight());
