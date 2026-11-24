@@ -1,6 +1,10 @@
 # Local editor and operating system files
 .idea/
 .vscode/
+*.iml
+.classpath
+.project
+.settings/
 *.swp
 .DS_Store
 Thumbs.db
@@ -19,3 +23,12 @@ tmp/
 # Java build output
 target/
 *.class
+
+# Local development instructions and tool state
+AGENTS.md
+.codex/
+.claude/
+CLAUDE.md
+
+# Coverage execution data
+*.exec

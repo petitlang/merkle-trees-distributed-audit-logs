@@ -26,6 +26,11 @@ public class MerkleTreeSteps {
         events = new ArrayList<>(List.of(event));
     }
 
+    @Given("a Unicode login event")
+    public void unicodeLoginEvent() {
+        singleEvent("\u7528\u6237\u767b\u5f55");
+    }
+
     @Given("the first {int} events named e1 onwards")
     public void numberedEvents(int size) {
         events = new ArrayList<>(IntStream.rangeClosed(1, size)

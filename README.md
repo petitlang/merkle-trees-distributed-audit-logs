@@ -60,10 +60,8 @@ mvn test
 ```
 
 The Cucumber runner writes `target/cucumber/report.html` and `report.json`.
-The initial MerkleTree implementation predates this workflow; its Cucumber
-scenarios were added retrospectively. See [the development record](docs/development.md)
-for the actual observed runs. Future functionality must start with a behavior
-RED before implementation.
+See [development and testing](docs/development.md) for the test scope and
+validation results.
 
 ## MerkleTree usage
 
