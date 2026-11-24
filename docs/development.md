@@ -134,3 +134,22 @@ auditor. The duplicate test verifier was removed. Fixed roots and exact-order
 proof vectors still check both sides of the integration independently.
 `mvn -B -ntp clean verify` on JDK 17.0.18 passed 62 Cucumber examples and 95
 JUnit cases, with no failures or skips, and produced the JAR.
+
+## Focused presentation of testing scenarios 1-3
+
+Reviewed main commit `324f8d1`, then updated yuefan from main. Existing
+construction and valid-membership examples now have `@first-three` and
+numbered tags. One explicit two-event hash calculation was added, with
+intermediate hashes independent of the production hashing helpers. Tagged
+scenarios log roots, splits, paths, and membership results to the console
+and Cucumber report. Production classes and scenarios 4/5 were not changed.
+
+The calculation uses direct MessageDigest operations for two leaves and their
+parent. It needs no general-purpose test hash helper or size-dependent branch.
+The original four-event fixed-vector examples remain in place.
+
+On 2026-11-24, JDK 17.0.12 and Maven 3.9.9 passed the 25 selected scenarios
+(7 for scenario 1, 3 for scenario 2, and 15 for scenario 3; 108 steps). A clean
+regression verification passed all 158 tests: 63 Cucumber and 95 JUnit cases.
+There were no failures or skips in that full build. See [the focused testing
+guide](testing-first-three.md) for formulas, commands, and screenshot guidance.

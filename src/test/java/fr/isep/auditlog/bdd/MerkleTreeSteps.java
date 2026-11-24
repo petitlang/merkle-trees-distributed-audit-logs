@@ -1,13 +1,19 @@
 package fr.isep.auditlog.bdd;
 
 import fr.isep.auditlog.MerkleTree;
+import io.cucumber.java.Before;
+import io.cucumber.java.Scenario;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -20,6 +26,12 @@ public class MerkleTreeSteps {
     private MerkleTree tree;
     private String originalRoot;
     private String rebuiltRoot;
+    private Scenario scenario;
+
+    @Before("@first-three and @merkle-tree")
+    public void enableFirstThreeOutput(Scenario scenario) {
+        this.scenario = scenario;
+    }
 
     @Given("the single event {string}")
     public void singleEvent(String event) {
@@ -47,6 +59,38 @@ public class MerkleTreeSteps {
     public void buildTree() {
         tree = MerkleTree.build(events);
         originalRoot = tree.getHashHex();
+        report("Events: " + events);
+        report("Tree size=" + tree.getSize() + ", range="
+                + tree.getStartIndex() + ".." + tree.getEndIndex());
+        report("Root: " + originalRoot);
+        if (!tree.isLeaf()) {
+            report("Root split: " + tree.getLeft().getSize() + " + " + tree.getRight().getSize());
+        }
+    }
+
+    @Then("the root agrees with the two-event hash calculation")
+    public void checkTwoEventRoot() throws NoSuchAlgorithmException {
+        assertEquals(List.of("e1", "e2"), events);
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+        // First leaf: SHA256(0x00 | UTF8("e1")). digest() resets the digest.
+        digest.update((byte) 0x00);
+        byte[] h1 = digest.digest("e1".getBytes(StandardCharsets.UTF_8));
+
+        // Second leaf: SHA256(0x00 | UTF8("e2")).
+        digest.update((byte) 0x00);
+        byte[] h2 = digest.digest("e2".getBytes(StandardCharsets.UTF_8));
+
+        // Parent: SHA256(0x01 | h1 | h2), using raw bytes.
+        digest.update((byte) 0x01);
+        digest.update(h1);
+        byte[] expectedRoot = digest.digest(h2);
+
+        report("h1 = " + HexFormat.of().formatHex(h1));
+        report("h2 = " + HexFormat.of().formatHex(h2));
+        report("Calculated root = " + HexFormat.of().formatHex(expectedRoot));
+        assertArrayEquals(expectedRoot, tree.getHash());
+        report("Two-event calculation matches the built root: true");
     }
 
     @Then("the root hash is {string}")
@@ -134,6 +178,12 @@ public class MerkleTreeSteps {
         } else {
             collectLeaves(node.getLeft(), leaves);
             collectLeaves(node.getRight(), leaves);
+        }
+    }
+
+    private void report(String text) {
+        if (scenario != null) {
+            scenario.log(text);
         }
     }
 }

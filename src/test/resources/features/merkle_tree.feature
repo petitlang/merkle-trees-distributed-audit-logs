@@ -24,6 +24,7 @@ Feature: Build a tamper-evident Merkle tree
     And the root covers events 1 through 1
     And the root is a leaf without children
 
+  @first-three @scenario-1
   Scenario Outline: Reproduce independently calculated root hashes
     Given the first <size> events named e1 onwards
     When I build the Merkle tree
@@ -36,6 +37,13 @@ Feature: Build a tamper-evident Merkle tree
       | 4    | 7abfaa969284fb86f37f1e0aa9ade022007b377e88766f4d0d2d6419a8d20d40 |
       | 8    | 7dc0f08884fa7f18ba933c2d46d41f0de6246cdaff7d4808e675beea75e52cd8 |
 
+  @first-three @scenario-1
+  Scenario: Check a two-event root with explicit hash calculations
+    Given the first 2 events named e1 onwards
+    When I build the Merkle tree
+    Then the root agrees with the two-event hash calculation
+
+  @first-three @scenario-3
   Scenario Outline: Preserve non-power-of-two event sequences without padding
     Given the first <size> events named e1 onwards
     When I build the Merkle tree

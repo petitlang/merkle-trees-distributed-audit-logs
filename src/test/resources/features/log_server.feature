@@ -10,15 +10,23 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     Then the server contains <size> events
     And the server root is "<root>"
 
-    Examples:
+    Examples: Single-event boundary
       | size | root                                                             |
       | 1    | d38b823b070424fc9303ff6f20f4ddeef6dc32aa02c75d9c8c3ae46062c78f6b |
+
+    @first-three @scenario-1
+    Examples: Two, four, and eight events from a ledger
+      | size | root                                                             |
       | 2    | 1ae210a506da2f0264c59f2041fe70fe9bfceda1cbb394471e9587e44b430216 |
       | 4    | 7abfaa969284fb86f37f1e0aa9ade022007b377e88766f4d0d2d6419a8d20d40 |
+      | 8    | 7dc0f08884fa7f18ba933c2d46d41f0de6246cdaff7d4808e675beea75e52cd8 |
+
+    @first-three @scenario-3
+    Examples: Non-power-of-two ledgers
+      | size | root                                                             |
       | 5    | 7fd3c099308e01bbab60705cd997b86c446f1b9506e812d0497ade31835435fc |
       | 6    | 0ec8a9f5275054d630180595e5d356faf48ea547c96e4b9c9ebe89303ce326b8 |
       | 7    | d4c3f3d9e11b8582989a2f71b1bde67120ae3183c355f6b5895004ddc5c55ad2 |
-      | 8    | 7dc0f08884fa7f18ba933c2d46d41f0de6246cdaff7d4808e675beea75e52cd8 |
 
   Scenario: Append one event and retain it after reopening the ledger
     Given a ledger containing 6 numbered events
@@ -51,11 +59,16 @@ Feature: Manage an append-only ledger and provide independently checkable proofs
     When I request the audit path for event <index>
     Then the auditor confirms membership for event <index>
 
-    Examples:
+    @first-three @scenario-2
+    Examples: First, middle, and last events in the eight-event log
       | size | index |
       | 8    | 1     |
       | 8    | 4     |
       | 8    | 8     |
+
+    @first-three @scenario-3
+    Examples: First, middle, and last events in non-power-of-two logs
+      | size | index |
       | 5    | 1     |
       | 5    | 3     |
       | 5    | 5     |

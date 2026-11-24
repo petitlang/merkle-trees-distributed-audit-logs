@@ -5,6 +5,7 @@ import fr.isep.auditlog.LogServer;
 import fr.isep.auditlog.MerkleTree;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
+import io.cucumber.java.Scenario;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -29,6 +31,12 @@ public class LogServerSteps {
     private byte[] oldRoot;
     private List<byte[]> proof;
     private IllegalArgumentException requestError;
+    private Scenario scenario;
+
+    @Before("@first-three and @log-server")
+    public void enableFirstThreeOutput(Scenario scenario) {
+        this.scenario = scenario;
+    }
 
     @Before("@log-server")
     public void createLedgerDirectory() throws IOException {
@@ -58,6 +66,8 @@ public class LogServerSteps {
     public void openServer() throws IOException {
         server = new LogServer(ledger);
         auditor = auditorForCurrentCheckpoint();
+        report("Ledger records: " + events);
+        report("Checkpoint size=" + server.getSize() + ", root=" + server.getRootHex());
     }
 
     @Then("the server contains {int} events")
@@ -95,11 +105,19 @@ public class LogServerSteps {
     @When("I request the audit path for event {int}")
     public void requestPath(int index) {
         proof = server.genPath(index);
+        report("genPath(" + index + "): " + proof.size() + " sibling hashes, leaf-to-root");
+        for (int i = 0; i < proof.size(); i++) {
+            report("  path[" + i + "]=" + HexFormat.of().formatHex(proof.get(i)));
+        }
     }
 
     @Then("the auditor confirms membership for event {int}")
     public void membershipSucceeds(int index) {
-        assertTrue(auditor.isMember(events.get(index - 1), index, proof));
+        String event = events.get(index - 1);
+        boolean member = auditor.isMember(event, index, proof);
+        report("isMember(event=" + event + ", index=" + index
+                + ", size=" + server.getSize() + ") = " + member);
+        assertTrue(member);
     }
 
     @Then("the auditor rejects the path for event {int}")
@@ -183,5 +201,11 @@ public class LogServerSteps {
 
     private static List<String> numberedEvents(int first, int last) {
         return IntStream.rangeClosed(first, last).mapToObj(i -> "e" + i).toList();
+    }
+
+    private void report(String text) {
+        if (scenario != null) {
+            scenario.log(text);
+        }
     }
 }

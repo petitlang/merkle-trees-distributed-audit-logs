@@ -64,6 +64,16 @@ The Cucumber runner writes `target/cucumber/report.html` and `report.json`.
 See [development and testing](docs/development.md) for the test scope and
 validation results.
 
+To run only lab testing scenarios 1-3, including root output, explicit small-log
+hash calculations, and first/middle/last membership checks:
+
+```powershell
+mvn "-Dtest=RunCucumberTest" "-Dcucumber.filter.tags=@first-three" test
+```
+
+See [testing scenarios 1-3](docs/testing-first-three.md) for the numbered groups
+and screenshot instructions.
+
 ## MerkleTree usage
 
 ```java
@@ -102,7 +112,7 @@ For events e1 through e8, the expected root is:
 7dc0f08884fa7f18ba933c2d46d41f0de6246cdaff7d4808e675beea75e52cd8
 ```
 
-The MerkleTree coverage contains 16 Cucumber examples and 35 JUnit cases. It covers independent
+The MerkleTree coverage contains 17 Cucumber examples and 35 JUnit cases. It covers independent
 hash vectors, empty/UTF-8/emoji events, whitespace preservation, tree sizes up to
 1025, node ranges, first/middle/last-event tampering, event order, immutability,
 invalid inputs, and indices near Integer.MAX_VALUE.
@@ -160,7 +170,7 @@ An audit path contains raw SHA-256 sibling hashes in leaf-to-root order. The eve
 index is one-based. Missing, extra, malformed, or incorrect proof hashes cause
 verification to return `false`.
 
-The suite has 62 Cucumber examples and 95 JUnit cases. Fixed checkpoint and
+The suite has 63 Cucumber examples and 95 JUnit cases. Fixed checkpoint and
 proof vectors test the verifier independently of the server. The server tests
 also check generated proofs with the auditor across a range of log sizes.
 
