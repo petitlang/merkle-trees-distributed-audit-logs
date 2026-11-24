@@ -28,9 +28,9 @@ this workflow from the first scenario.
 | Validation | Empty/null inputs, invalid indices, missing children, gaps, overlaps, reversed ranges, and invalid splits |
 | Event contents | Duplicate events, empty strings, whitespace, and line breaks |
 
-Expected hashes were calculated independently with Python hashlib. Production
-hashing concatenates the tag and payload bytes before calling
-MessageDigest.getInstance("SHA-256") and digest.digest(nodeBytes).
+Expected hashes were calculated independently with Python hashlib. The hash
+input is built with `ByteArrayOutputStream`, which writes the tag and payload
+bytes in order before `digest.digest(nodeBytes)` computes SHA-256.
 
 ## Validation results
 
@@ -52,6 +52,18 @@ changes preserved the results.
 After the documentation cleanup, the Unicode fixture kept its original code
 points using Java escapes and an English Gherkin description. Running `mvn test`
 on JDK 17 again passed all 51 cases.
+
+After replacing manual array copying with `ByteArrayOutputStream`, `mvn test`
+on JDK 17 passed all 51 cases.
+
+The next BLUE review reused `getSize()` when validating a parent node, used
+`Collectors.toCollection` for mutable test fixtures, and replaced exception
+capture in the empty sequence scenario with JUnit's `assertThrows`.
+`mvn -B -ntp test` passed all 51 cases on JDK 17.0.18.
+
+`MerkleTree.build(events)` reads the event list directly. The caller keeps it
+unchanged during construction. After removing the snapshot and updating callers
+to use `build`, `mvn -B -ntp test` passed all 51 cases on JDK 17.0.18.
 
 ## Commands and reports
 
@@ -94,3 +106,7 @@ RED, GREEN, and BLUE command logs are local ignored files under `tmp/`.
 Current HTML/JSON Cucumber output is under `target/cucumber/`. This work
 validates LogServer behavior with independent test-only verifiers; it does
 not validate a production Auditor or a distributed deployment.
+
+The integrated build uses `MerkleTree.build(events)` when opening the ledger
+and after an append. `mvn -B -ntp clean verify` on JDK 17.0.18 passed all 143
+tests and produced the JAR.

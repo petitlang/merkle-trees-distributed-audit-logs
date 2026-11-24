@@ -42,13 +42,13 @@ class MerkleTreeTest {
             "1025, 3afa8fb5d6704ba5f355da49c2403da27c8e48a7d47d6f2532fe2c2006abe389"
     })
     void matchesIndependentRootVectors(int size, String expectedHash) {
-        assertEquals(expectedHash, MerkleTree.fromEvents(events(size)).getHashHex());
+        assertEquals(expectedHash, MerkleTree.build(events(size)).getHashHex());
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3, 4, 5, 6, 7, 8, 9, 16, 17, 31, 32, 33, 1025})
     void preservesEveryLeafOnceAndAssignsContiguousRanges(int size) {
-        MerkleTree tree = MerkleTree.fromEvents(events(size));
+        MerkleTree tree = MerkleTree.build(events(size));
         assertEquals(1, tree.getStartIndex());
         assertEquals(size, tree.getEndIndex());
         assertEquals(2 * size - 1, checkStructure(tree));
@@ -80,35 +80,35 @@ class MerkleTreeTest {
         MerkleTree parent = new MerkleTree(left, right);
         assertSame(left, parent.getLeft());
         assertSame(right, parent.getRight());
-        assertEquals(MerkleTree.fromEvents(events(2)).getHashHex(), parent.getHashHex());
+        assertEquals(MerkleTree.build(events(2)).getHashHex(), parent.getHashHex());
     }
 
     @Test
     void hashAndSourceListCannotMutateAnExistingTree() {
         List<String> source = new ArrayList<>(events(4));
-        MerkleTree tree = MerkleTree.fromEvents(source);
+        MerkleTree tree = MerkleTree.build(source);
         String originalHash = tree.getHashHex();
         Arrays.fill(tree.getHash(), (byte) 0);
         source.set(0, "tampered");
         assertEquals(originalHash, tree.getHashHex());
-        assertNotEquals(originalHash, MerkleTree.fromEvents(source).getHashHex());
+        assertNotEquals(originalHash, MerkleTree.build(source).getHashHex());
     }
 
     @Test
     void detectsChangedEventsAndOrder() {
-        String original = MerkleTree.fromEvents(events(4)).getHashHex();
+        String original = MerkleTree.build(events(4)).getHashHex();
         assertNotEquals(original,
-                MerkleTree.fromEvents(List.of("e1", "modified", "e3", "e4")).getHashHex());
+                MerkleTree.build(List.of("e1", "modified", "e3", "e4")).getHashHex());
         assertNotEquals(original,
-                MerkleTree.fromEvents(List.of("e2", "e1", "e3", "e4")).getHashHex());
+                MerkleTree.build(List.of("e2", "e1", "e3", "e4")).getHashHex());
     }
 
     @Test
     void rejectsInvalidInputAndMalformedChildRanges() {
-        assertThrows(IllegalArgumentException.class, () -> MerkleTree.fromEvents(List.of()));
-        assertThrows(NullPointerException.class, () -> MerkleTree.fromEvents(null));
+        assertThrows(IllegalArgumentException.class, () -> MerkleTree.build(List.of()));
+        assertThrows(NullPointerException.class, () -> MerkleTree.build(null));
         assertThrows(NullPointerException.class,
-                () -> MerkleTree.fromEvents(Arrays.asList("e1", null)));
+                () -> MerkleTree.build(Arrays.asList("e1", null)));
         assertThrows(NullPointerException.class, () -> new MerkleTree((String) null, 1));
         assertThrows(IllegalArgumentException.class, () -> new MerkleTree("e1", 0));
         MerkleTree first = new MerkleTree("e1", 1);
@@ -125,7 +125,7 @@ class MerkleTreeTest {
 
     @Test
     void acceptsEmptyAndDuplicateEventStringsAsDistinctEntries() {
-        MerkleTree tree = MerkleTree.fromEvents(List.of("", ""));
+        MerkleTree tree = MerkleTree.build(List.of("", ""));
         assertEquals(2, tree.getSize());
         assertArrayEquals(tree.getLeft().getHash(), tree.getRight().getHash());
         assertNotEquals(tree.getLeft().getHashHex(), tree.getHashHex());
@@ -154,14 +154,14 @@ class MerkleTreeTest {
         assertEquals(Integer.MAX_VALUE, parent.getEndIndex());
         assertEquals(2, parent.getSize());
         assertEquals(1, right.getSize());
-        assertEquals(MerkleTree.fromEvents(events(2)).getHashHex(), parent.getHashHex());
+        assertEquals(MerkleTree.build(events(2)).getHashHex(), parent.getHashHex());
         assertThrows(IllegalArgumentException.class,
                 () -> new MerkleTree(right, new MerkleTree("e3", 1)));
     }
 
     @Test
     void allowsManualConstructionOfANonPowerOfTwoTree() {
-        MerkleTree firstFour = MerkleTree.fromEvents(events(4));
+        MerkleTree firstFour = MerkleTree.build(events(4));
         MerkleTree lastTwo = new MerkleTree(
                 new MerkleTree("e5", 5), new MerkleTree("e6", 6));
         MerkleTree parent = new MerkleTree(firstFour, lastTwo);

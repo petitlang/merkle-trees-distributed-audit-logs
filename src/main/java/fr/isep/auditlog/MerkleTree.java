@@ -1,5 +1,6 @@
 package fr.isep.auditlog;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -41,7 +42,7 @@ public final class MerkleTree {
             throw new IllegalArgumentException("child ranges must be adjacent and ordered");
         }
         // The lab's six-event tree splits as 4 + 2, rather than 3 + 3.
-        int size = right.endIndex - left.startIndex + 1;
+        int size = left.getSize() + right.getSize();
         int expectedLeftSize = Integer.highestOneBit(size - 1);
         if (left.getSize() != expectedLeftSize) {
             throw new IllegalArgumentException(
@@ -59,18 +60,17 @@ public final class MerkleTree {
      * Builds a tree from a nonempty sequence, assigning indices 1 through n.
      * Each subtree splits at the largest power of two strictly below its size.
      * This preserves event order without duplicating or padding leaves.
-     * Construction takes O(n) time and O(n) space, including the stored nodes.
+     * Uses indexed reads. Keep the list unchanged until this method returns.
      *
      * @throws IllegalArgumentException if the sequence is empty
      * @throws NullPointerException if the sequence or any event is null
      */
-    public static MerkleTree fromEvents(List<String> events) {
-        // Snapshot the input and use constant-time indexed access during recursion.
-        List<String> snapshot = List.copyOf(events);
-        if (snapshot.isEmpty()) {
+    public static MerkleTree build(List<String> events) {
+        Objects.requireNonNull(events, "events must not be null");
+        if (events.isEmpty()) {
             throw new IllegalArgumentException("a Merkle tree needs at least one event");
         }
-        return build(snapshot, 0, snapshot.size());
+        return build(events, 0, events.size());
     }
 
     private static MerkleTree build(List<String> events, int from, int size) {
@@ -84,23 +84,12 @@ public final class MerkleTree {
     }
 
     private static byte[] taggedHash(byte tag, byte[]... parts) {
-        int length = 1; // Include the leaf/internal-node tag.
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        bytes.write(tag);
         for (byte[] part : parts) {
-            length = Math.addExact(length, part.length);
+            bytes.writeBytes(part);
         }
-        byte[] nodeBytes = new byte[length];
-        nodeBytes[0] = tag;
-        int offset = 1;
-        for (byte[] part : parts) {
-            System.arraycopy(
-                    part,        // Source array
-                    0,           // Starting index in the source array
-                    nodeBytes,   // Destination array
-                    offset,      // Starting index in the destination array
-                    part.length  // Number of elements to copy
-            );
-            offset += part.length;
-        }
+        byte[] nodeBytes = bytes.toByteArray();
 
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

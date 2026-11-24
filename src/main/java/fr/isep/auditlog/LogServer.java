@@ -18,10 +18,10 @@ import java.util.Objects;
  * This instance owns the ledger while running: external changes require reopening.
  */
 public final class LogServer {
-    private final Path ledger;       // 日志文件的位置，追加记录时还要用。
-    private List<String> events;     // 文件里的所有记录：一行对应一个字符串。
-    private MerkleTree tree;         // Merkle 树的根节点；通过它可以访问整棵树。
-    private boolean lineTerminated;  // 文件末尾是否已有换行符，后面 append 会用到。
+    private final Path ledger;
+    private List<String> events;
+    private MerkleTree tree;
+    private boolean lineTerminated;
 
     /**
      * Loads an existing UTF-8 ledger, one event per line, without trimming or
@@ -31,21 +31,19 @@ public final class LogServer {
      * @throws IOException if the file cannot be read or is not valid UTF-8
      */
     public LogServer(Path ledger) throws IOException {
-        // 1. 保存文件路径，并拒绝 null 路径。
         this.ledger = Objects.requireNonNull(ledger, "ledger must not be null");
 
-        // 2. 按 UTF-8 读取全文，再按行变成日志列表；不去掉记录中的空格。
         String content = Files.readString(ledger, StandardCharsets.UTF_8);
         this.events = content.lines().toList();
 
-        // 3. 调用已经学过的 fromEvents 建树；空文件暂时没有根节点。
+        // An empty ledger has no tree node.
         if (events.isEmpty()) {
             this.tree = null;
         } else {
-            this.tree = MerkleTree.fromEvents(events);
+            this.tree = MerkleTree.build(events);
         }
 
-        // 4. 记住文件末尾的换行情况，避免以后追加时把两条记录连在一起。
+        // An append may need to insert a separator before the first new event.
         this.lineTerminated = content.isEmpty() || content.endsWith("\n") || content.endsWith("\r");
     }
 
@@ -87,7 +85,7 @@ public final class LogServer {
         }
         List<String> updated = new ArrayList<>(events);
         updated.addAll(batch);
-        MerkleTree updatedTree = MerkleTree.fromEvents(updated);
+        MerkleTree updatedTree = MerkleTree.build(updated);
         appendToLedger(batch);
         events = List.copyOf(updated);
         tree = updatedTree;

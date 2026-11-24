@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,7 +20,6 @@ public class MerkleTreeSteps {
     private MerkleTree tree;
     private String originalRoot;
     private String rebuiltRoot;
-    private IllegalArgumentException constructionError;
 
     @Given("the single event {string}")
     public void singleEvent(String event) {
@@ -33,8 +33,9 @@ public class MerkleTreeSteps {
 
     @Given("the first {int} events named e1 onwards")
     public void numberedEvents(int size) {
-        events = new ArrayList<>(IntStream.rangeClosed(1, size)
-                .mapToObj(i -> "e" + i).toList());
+        events = IntStream.rangeClosed(1, size)
+                .mapToObj(i -> "e" + i)
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     @Given("an empty event sequence")
@@ -44,17 +45,8 @@ public class MerkleTreeSteps {
 
     @When("I build the Merkle tree")
     public void buildTree() {
-        tree = MerkleTree.fromEvents(events);
+        tree = MerkleTree.build(events);
         originalRoot = tree.getHashHex();
-    }
-
-    @When("I try to build the Merkle tree")
-    public void tryBuildTree() {
-        try {
-            tree = MerkleTree.fromEvents(events);
-        } catch (IllegalArgumentException e) {
-            constructionError = e;
-        }
     }
 
     @Then("the root hash is {string}")
@@ -99,13 +91,13 @@ public class MerkleTreeSteps {
     @When("I replace event {int} with {string} and rebuild")
     public void replaceAndRebuild(int index, String event) {
         events.set(index - 1, event);
-        rebuiltRoot = MerkleTree.fromEvents(events).getHashHex();
+        rebuiltRoot = MerkleTree.build(events).getHashHex();
     }
 
     @When("I swap events {int} and {int} and rebuild")
     public void swapAndRebuild(int first, int second) {
         Collections.swap(events, first - 1, second - 1);
-        rebuiltRoot = MerkleTree.fromEvents(events).getHashHex();
+        rebuiltRoot = MerkleTree.build(events).getHashHex();
     }
 
     @Then("the rebuilt root differs from the original root")
@@ -124,9 +116,9 @@ public class MerkleTreeSteps {
         assertEquals(originalRoot, tree.getHashHex());
     }
 
-    @Then("construction is rejected with an illegal argument")
+    @Then("building the Merkle tree throws an IllegalArgumentException")
     public void rejectedConstruction() {
-        assertNotNull(constructionError, "empty sequence must be rejected");
+        assertThrows(IllegalArgumentException.class, () -> MerkleTree.build(events));
     }
 
     private static void assertRange(MerkleTree node, int start, int end) {
