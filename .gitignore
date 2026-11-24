@@ -15,3 +15,7 @@ desktop.ini
 tmp/
 *.tmp
 *.bak
+
+# Java build output
+target/
+*.class

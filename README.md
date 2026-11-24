@@ -16,7 +16,99 @@ The original assignment is available in [lab_merkle.pdf](lab_merkle.pdf).
 
 ## Status
 
-Repository initialized. Implementation and build/run instructions will follow.
+Implemented the MerkleTree class in Java 17. LogServer, Auditor, Client, and the
+gRPC service will be added in later steps.
+
+## Build and test
+
+Requires JDK 17 and Maven 3. Set JAVA_HOME to the JDK 17 installation and ensure
+that its bin directory is on PATH. Check the Java version used by Maven:
+
+```powershell
+mvn -version
+mvn test
+mvn package
+```
+
+The Maven compiler targets Java 17. The tree itself uses only the Java standard
+library; Cucumber and JUnit are test dependencies.
+
+## Development workflow: Gherkin -> RED -> GREEN -> BLUE
+
+For each new behavior:
+
+1. Describe acceptance examples using Given/When/Then in
+   `src/test/resources/features/*.feature`.
+2. RED: write the Java step definitions and any focused JUnit tests. Run the
+   tests and confirm failure due to the missing behavior.
+3. GREEN: implement the smallest production change that makes the tests pass.
+4. BLUE: refactor without changing behavior, then rerun the relevant tests.
+
+Cucumber executes the Gherkin scenarios through Java step definitions. JUnit
+also provides assertions and detailed unit coverage. A scenario describing
+invalid input should pass when the application correctly rejects that input;
+RED means the required behavior is missing or incorrect.
+
+```powershell
+# Run only the Cucumber acceptance suite
+mvn "-Dtest=RunCucumberTest" test
+
+# Run Cucumber and JUnit together
+mvn test
+```
+
+The Cucumber runner writes `target/cucumber/report.html` and `report.json`.
+The initial MerkleTree implementation predates this workflow; its Cucumber
+scenarios were added retrospectively. See [the development record](docs/development.md)
+for the actual observed runs. Future functionality must start with a behavior
+RED before implementation.
+
+## MerkleTree usage
+
+```java
+import fr.isep.auditlog.MerkleTree;
+import java.util.List;
+
+MerkleTree tree = MerkleTree.fromEvents(
+        List.of("e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8"));
+
+System.out.println(tree.getHashHex());
+System.out.println(tree.getStartIndex() + ".." + tree.getEndIndex()); // 1..8
+
+// A small tree can also be assembled manually.
+MerkleTree first = new MerkleTree("e1", 1);
+MerkleTree second = new MerkleTree("e2", 2);
+MerkleTree parent = new MerkleTree(first, second);
+```
+
+- Each node stores its SHA-256 hash, left/right children, and inclusive one-based
+  event range. Leaves have null children.
+- Leaves hash `0x00 || UTF-8(event)`. Parents hash
+  `0x01 || leftHash || rightHash`, using raw hash bytes rather than hexadecimal text.
+- For n > 1, the left subtree contains the largest power of two strictly below n.
+  For example, 6 events split as 4 + 2, and 7 split as 4 + 3. No leaves are duplicated.
+- Nodes are immutable. `getHash()` returns a copy suitable for later gRPC byte fields;
+  `getHashHex()` returns a printable representation.
+- Empty sequences are rejected because this class represents an actual node.
+  Empty event strings and duplicate events are allowed. Null events are rejected.
+- Building n events takes O(n) time and O(n) storage, with O(log n) recursion depth.
+
+For events e1 through e8, the expected root is:
+
+```text
+7dc0f08884fa7f18ba933c2d46d41f0de6246cdaff7d4808e675beea75e52cd8
+```
+
+The suite contains 16 Cucumber examples and 35 JUnit cases. It covers independent
+hash vectors, empty/UTF-8/emoji events, whitespace preservation, tree sizes up to
+1025, node ranges, first/middle/last-event tampering, event order, immutability,
+invalid inputs, and indices near Integer.MAX_VALUE.
+
+The BLUE review passed on JDK 17 with 100% branch coverage and 55/57 executable
+lines covered in MerkleTree. The two uncovered lines handle an unavailable
+SHA-256 implementation, which a standard JDK provides. This validation covers
+the current tree class; proofs, server operations, and gRPC will receive their
+own scenarios as they are implemented. See the development record for commands.
 
 ## Deliverables
 
